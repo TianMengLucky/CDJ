@@ -1,0 +1,48 @@
+name: AutoBuild .NET
+
+on: [push, pull_request]
+
+jobs:
+  BuildLiunx:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Build
+        run: dotnet build CDJ.csproj --configuration Release --output ./Release
+
+      - name: Upload
+        uses: actions/upload-artifact@v4.3.1
+        with:
+          name: CDJ-Linux
+          path: ./Release/
+          
+  BuildWindows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Build
+        run: dotnet build CDJ.csproj --configuration Release --output ./Release
+
+      - name: Upload
+        uses: actions/upload-artifact@v4.3.1
+        with:
+          name: CDJ-Windows
+          path: ./Release/
