@@ -33,7 +33,7 @@ public static class Program
         var hostBuilder = Host.CreateDefaultBuilder(args).UseContentRoot(Directory.GetCurrentDirectory());
         var config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("Config.json", true)
+            .AddJsonFile("config.json")
             .Build();
         
         hostBuilder
@@ -44,7 +44,7 @@ public static class Program
                 collection.AddSingleton<SocketService>(); 
                 collection.AddSingleton<OneBotService>();
                 collection.AddSingleton<RoomsService>();
-                collection.Configure<ServerConfig>(config.GetSection("Server"));
+                collection.Configure<ServerConfig>(config);
             })
             .UseSerilog();
         return hostBuilder;

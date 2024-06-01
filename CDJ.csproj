@@ -35,8 +35,5 @@
         <None Include="config.json" />
     </ItemGroup>
     
-    <ItemGroup>
-      <Content Include=".github\workflows\build.yml" />
-    </ItemGroup>
 
 </Project>
