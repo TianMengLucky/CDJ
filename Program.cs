@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -121,26 +122,28 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
         {
             while (!_cancellationToken.IsCancellationRequested)
             {
-                using var socket = await _TcpListener.AcceptSocketAsync();
-                _Sockets.Add(socket);
-                var bytes = new byte[60];
-                await socket.ReceiveAsync(bytes);
-                var str = Encoding.Default.GetString(bytes).Replace("   ", string.Empty);
-                logger.LogInformation($"sokcet {_config.Ip} {_config.Port} {str}");
-                if (string.Compare(str, "test", StringComparison.CurrentCulture) == 0)
+                try
                 {
-                    var bs = Encoding.Default.GetBytes("Test Form SERVER");
-                    await socket.SendAsync(bs);
-                    continue;
+                    var socket = await _TcpListener.AcceptSocketAsync();
+                    var bytes = new byte[60];
+                    var count =await socket.ReceiveAsync(bytes);
+                    var str = Encoding.Default.GetString(bytes).TrimEnd('\0');
+                    logger.LogInformation($"sokcet {_config.Ip} {_config.Port} {str}");
+                    
+                    if (str == "test")
+                    {
+                        await socket.SendAsync(Encoding.Default.GetBytes("Test Form SERVER"));
+                        continue;
+                    }
+
+                    roomsService.TryGetRoom(str, out var room);
+                    var message = roomsService.ParseRoom(room);
+                    await oneBotService.SendMessage(message);
                 }
-                
-                if (!roomsService.TryGetRoom(str, out var room))
+                catch (Exception e)
                 {
-                    logger.LogInformation("GetRoom No");
-                    continue;
+                    logger.LogError(e.ToString());
                 }
-                var message = roomsService.ParseRoom(room);
-                await oneBotService.SendMessage(message);
             }
         }, TaskCreationOptions.LongRunning);
         return true;
@@ -150,8 +153,6 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
     {
         await _cancellationToken.CancelAsync();
         _Task?.Dispose();
-        foreach (var so in _Sockets)
-            so.Dispose();
     }
 }
 
@@ -294,7 +295,7 @@ public class RoomsService
             BuildVersion = strings[1];
 
         var count = int.Parse(strings[2]);
-        var langId = (LangName)byte.Parse(strings[3]);
+        var langId = Enum.Parse<LangName>(strings[3]);
         var serverName = strings[4];
         var playName = strings[5];
         
@@ -318,10 +319,10 @@ public class RoomsService
         return def;
     }
 
-    public Dictionary<LangName, string> lang = new()
+    public static readonly Dictionary<LangName, string> lang = new()
     {
         {LangName.SChinese, "简体中文"},
-        { LangName.TChinese , "繁体中午"}
+        { LangName.TChinese , "繁体中文"}
     };
 }
 
@@ -387,32 +388,39 @@ public class EACService
         {
             while (!_cancellationToken.IsCancellationRequested)
             {
-                using var socket = await _TcpListener.AcceptSocketAsync();
-                _Sockets.Add(socket);
-                var bytes = new byte[60];
-                await socket.ReceiveAsync(bytes);
-                var str = Encoding.Default.GetString(bytes);
-                logger.LogInformation($"sokcet {_Config.Ip} {_Config.EACPort} {str}");
-                if (string.Compare(str, "test", StringComparison.CurrentCulture) == 0)
+                try
                 {
-                    await socket.SendAsync(Encoding.Default.GetBytes("Test Form SERVER"));
-                    continue;
-                }
+                    using var socket = await _TcpListener.AcceptSocketAsync();
+                    _Sockets.Add(socket);
+                    var bytes = new byte[60];
+                    await socket.ReceiveAsync(bytes);
+                    var str = Encoding.Default.GetString(bytes).TrimEnd('\0');
+                    logger.LogInformation($"sokcet {_Config.Ip} {_Config.EACPort} {str}");
+                    if (str == "test")
+                    {
+                        await socket.SendAsync(Encoding.Default.GetBytes("Test Form SERVER"));
+                        continue;
+                    }
 
-                var data = GET(str, out var clientId, out var name, out var reason);
-                if (data != null)
-                {
-                    data.Count++;
-                    data.ClientId = clientId;
-                    data.Name = name;
-                    data.Reason = reason;
+                    var data = GET(str, out var clientId, out var name, out var reason);
+                    if (data != null)
+                    {
+                        data.Count++;
+                        data.ClientId = clientId;
+                        data.Name = name;
+                        data.Reason = reason;
+                    }
+                    else
+                    {
+                        data = EACData.Get(str);
+                        _EacDatas.Add(data);
+                        if (data.Count > _Config.EACCount)
+                            await Ban(data);
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    data = EACData.Get(str);
-                    _EacDatas.Add(data);
-                    if (data.Count > _Config.EACCount)
-                        await Ban(data);
+                    logger.LogError(e.ToString());
                 }
             }
         }, TaskCreationOptions.LongRunning);
