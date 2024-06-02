@@ -123,15 +123,13 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
             {
                 using var socket = await _TcpListener.AcceptSocketAsync();
                 _Sockets.Add(socket);
-                var bytes = new byte[socket.ReceiveBufferSize];
+                var bytes = new byte[60];
                 await socket.ReceiveAsync(bytes);
                 var str = Encoding.Default.GetString(bytes).Replace("   ", string.Empty);
                 logger.LogInformation($"sokcet {_config.Ip} {_config.Port} {str}");
                 if (string.Compare(str, "test", StringComparison.CurrentCulture) == 0)
                 {
                     var bs = Encoding.Default.GetBytes("Test Form SERVER");
-                    var size = bs.Length;
-                    socket.SendBufferSize = size;
                     await socket.SendAsync(bs);
                     continue;
                 }
@@ -288,15 +286,19 @@ public class RoomsService
             return false;
         
         var code = strings[0];
-        if (!Version.TryParse(strings[1], out var version))
-            return false;
+        var BuildVersion = "";
+        Version? version = null;
+        if (Version.TryParse(strings[1], out var v))
+            version = v;
+        else
+            BuildVersion = strings[1];
 
         var count = int.Parse(strings[2]);
         var langId = (LangName)byte.Parse(strings[3]);
         var serverName = strings[4];
         var playName = strings[5];
-
-        room = new Room(code, version, count, langId, serverName, playName);
+        
+        room = new Room(code, version, count, langId, serverName, playName, BuildVersion);
         _Rooms.Add(room);
         return true;
     }
@@ -305,14 +307,15 @@ public class RoomsService
     public string ParseRoom(Room room)
     {
         var ln = lang.TryGetValue(room.LangId, out var value) ? value : Enum.GetName(room.LangId);
-        return 
-$@"房间号: {room.Code}
-版本号: {room.Version}
+        var ver = room.Version == null ? room.BuildId : room.Version.ToString();
+        var def = $@"房间号: {room.Code}
+版本号: {ver}
 人数: {room.Count}
 语言: {ln}
 服务器: {room.ServerName}
 房主: {room.PlayerName}
-";
+"; ;
+        return def;
     }
 
     public Dictionary<LangName, string> lang = new()
@@ -322,7 +325,7 @@ $@"房间号: {room.Code}
     };
 }
 
-public record Room(string Code, Version Version, int Count, LangName LangId, string ServerName, string PlayerName);
+public record Room(string Code, Version? Version, int Count, LangName LangId, string ServerName, string PlayerName, string BuildId = "");
 
 public enum LangName : byte
 {
@@ -386,7 +389,7 @@ public class EACService
             {
                 using var socket = await _TcpListener.AcceptSocketAsync();
                 _Sockets.Add(socket);
-                var bytes = new byte[2_048];
+                var bytes = new byte[60];
                 await socket.ReceiveAsync(bytes);
                 var str = Encoding.Default.GetString(bytes);
                 logger.LogInformation($"sokcet {_Config.Ip} {_Config.EACPort} {str}");
