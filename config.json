@@ -3,7 +3,7 @@
   "Port":25455,
   "BotHttpUrl":"http://localhost:3500",
   "SendToQun":true,
-  "QQID":2133404320,
+  "QQID":2774942196,
   "EACPort":25545,
   "EACCount": 5,
   "EACPath": "./EAC.txt"

@@ -82,6 +82,7 @@ public class CDJService(ILogger<CDJService> logger,SocketService socketService, 
         {
             if (!await oneBotService.ConnectBot())
                 logger.LogError("Failed to Connect Bot");
+            await oneBotService.Read();
         }
         catch
         {
@@ -122,15 +123,19 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
             {
                 using var socket = await _TcpListener.AcceptSocketAsync();
                 _Sockets.Add(socket);
-                var bytes = new byte[2_048];
+                var bytes = new byte[socket.ReceiveBufferSize];
                 await socket.ReceiveAsync(bytes);
-                var str = Encoding.Default.GetString(bytes);
+                var str = Encoding.Default.GetString(bytes).Replace("   ", string.Empty);
                 logger.LogInformation($"sokcet {_config.Ip} {_config.Port} {str}");
-                if (str == "Test")
+                if (string.Compare(str, "test", StringComparison.CurrentCulture) == 0)
                 {
-                    await socket.SendAsync(Encoding.Default.GetBytes("Test Form SERVER"));
+                    var bs = Encoding.Default.GetBytes("Test Form SERVER");
+                    var size = bs.Length;
+                    socket.SendBufferSize = size;
+                    await socket.SendAsync(bs);
                     continue;
                 }
+                
                 if (!roomsService.TryGetRoom(str, out var room))
                 {
                     logger.LogInformation("GetRoom No");
@@ -157,6 +162,22 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
     public readonly HttpClient _Client = new();
     private readonly ServerConfig _config = config.Value;
     public bool ConnectIng;
+    public List<(long, bool)> _Reads = [];
+
+
+    public async Task Read()
+    {
+        if (_config.ReadPath == string.Empty) return;
+        await using var stream = File.Open(_config.ReadPath, FileMode.OpenOrCreate);
+        using var reader = new StreamReader(stream);
+        while (!reader.EndOfStream)
+        {
+            var line = await reader.ReadLineAsync();
+            if (line == null) continue;
+            var str = line.Replace(" ", string.Empty).Split('|');
+            _Reads.Add((long.Parse(str[0]), bool.Parse(str[1])));
+        }
+    }
     
     public async Task<bool> ConnectBot()
     {
@@ -174,14 +195,30 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
     {
         if (!ConnectIng) 
             await ConnectBot();
-        var id = _config.QQID;
-        if (_config.SendToQun)
+        if (_config.QQID != 0)
         {
-            await SendMessageToQun(message, id);
+            if (_config.SendToQun)
+            {
+                await SendMessageToQun(message, _config.QQID);
+            }
+            else
+            {
+                await SendMessageToLXR(message, _config.QQID);
+            }
         }
         else
         {
-            await SendMessageToLXR(message, id);
+            foreach (var (id, isQun) in _Reads)
+            {
+                if (isQun)
+                {
+                    await SendMessageToQun(message, id);
+                }
+                else
+                {
+                    await SendMessageToLXR(message, id);
+                }
+            }
         }
     }
 
@@ -266,16 +303,23 @@ public class RoomsService
 
 
     public string ParseRoom(Room room)
-    { 
+    {
+        var ln = lang.TryGetValue(room.LangId, out var value) ? value : Enum.GetName(room.LangId);
         return 
-$@"Code:{room.Code}
-Version:{room.Version}
-Count:{room.Count}
-Lang:{Enum.GetName(room.LangId)}
-Server:{room.ServerName}
-Player:{room.PlayerName}
+$@"房间号: {room.Code}
+版本号: {room.Version}
+人数: {room.Count}
+语言: {ln}
+服务器: {room.ServerName}
+房主: {room.PlayerName}
 ";
     }
+
+    public Dictionary<LangName, string> lang = new()
+    {
+        {LangName.SChinese, "简体中文"},
+        { LangName.TChinese , "繁体中午"}
+    };
 }
 
 public record Room(string Code, Version Version, int Count, LangName LangId, string ServerName, string PlayerName);
@@ -299,6 +343,7 @@ public enum LangName : byte
     TChinese,
     Irish
 }
+
 
 public class EACService
 {
@@ -345,7 +390,7 @@ public class EACService
                 await socket.ReceiveAsync(bytes);
                 var str = Encoding.Default.GetString(bytes);
                 logger.LogInformation($"sokcet {_Config.Ip} {_Config.EACPort} {str}");
-                if (str == "Test")
+                if (string.Compare(str, "test", StringComparison.CurrentCulture) == 0)
                 {
                     await socket.SendAsync(Encoding.Default.GetBytes("Test Form SERVER"));
                     continue;
@@ -428,9 +473,11 @@ public class ServerConfig
 
     public string BotHttpUrl { get; set; } = "http://localhost:3000";
     public bool SendToQun { get; set; } = false;
-    public long QQID { get; set; } = 2133404320;
+    public long QQID { get; set; }
     public int EACPort { get; set; } = 25250;
     public int EACCount { get; set; } = 5;
     public string EACPath { get; set; } = "./EAC.txt";
+
+    public string ReadPath = string.Empty;
 }
 
