@@ -1,1 +1,10 @@
-{"Ip":"127.0.0.1","Port":25000,"BotHttpUrl":"http://localhost:3000","SendToQun":false,"QQID":2133404320}
+{
+  "Ip":"0.0.0.0",
+  "Port":25455,
+  "BotHttpUrl":"http://localhost:3500",
+  "SendToQun":true,
+  "QQID":2133404320,
+  "EACPort":25545,
+  "EACCount": 5,
+  "EACPath": "./EAC.txt"
+}
