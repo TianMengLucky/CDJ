@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -288,8 +289,7 @@ public class RoomsService
             return false;
         
         var code = strings[0];
-        if (!Version.TryParse(strings[1], out var version))
-            return false;
+        var version = strings[1];
 
         var count = int.Parse(strings[2]);
         var langId = (LangName)byte.Parse(strings[3]);
@@ -322,7 +322,7 @@ $@"房间号: {room.Code}
     };
 }
 
-public record Room(string Code, Version Version, int Count, LangName LangId, string ServerName, string PlayerName);
+public record Room(string Code, string Version, int Count, LangName LangId, string ServerName, string PlayerName);
 
 public enum LangName : byte
 {
