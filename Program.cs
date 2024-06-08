@@ -53,7 +53,13 @@ public static class Program
     }
 }
 
-public class CDJService(ILogger<CDJService> logger,SocketService socketService, OneBotService oneBotService, EACService eacService) : IHostedService
+public class CDJService
+(
+    ILogger<CDJService> logger,
+    SocketService socketService, 
+    OneBotService oneBotService,
+    EACService eacService,
+    ActiveService activeService) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -89,6 +95,16 @@ public class CDJService(ILogger<CDJService> logger,SocketService socketService, 
         {
             // ignored
         }
+
+        try
+        {
+            await activeService.StartAsync();
+        }
+        catch
+        {
+            // ignored
+            logger.LogError("Start Error Active Service");
+        }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -96,6 +112,7 @@ public class CDJService(ILogger<CDJService> logger,SocketService socketService, 
         await socketService.Stop();
         await oneBotService.Stop();
         await eacService.Stop();
+        await activeService.StopAsync();
     }
 }
 
@@ -490,5 +507,41 @@ public class ServerConfig
     public string EACPath { get; set; } = "./EAC.txt";
 
     public string ReadPath = string.Empty;
+    public string ApiUrl = string.Empty;
+    public int Time = 30;
+}
+
+public class ActiveService(ILogger<ActiveService> _logger, IOptions<ServerConfig> _options)
+{
+    public Task? _Task;
+    private readonly CancellationTokenSource _source = new();
+    private HttpClient _client = new();
+    public async ValueTask StartAsync()
+    {
+        if(_options.Value.ApiUrl == string.Empty) return;
+        _source.Token.Register(() => _Task?.Dispose());
+        var time = TimeSpan.FromSeconds(30);
+        _Task = Task.Factory.StartNew(async () =>
+        {
+            while (!_source.IsCancellationRequested)
+            {
+                try
+                {
+                    var responseMessage = await _client.GetAsync(_options.Value.ApiUrl);
+                    _logger.LogInformation($"Get{_options.Value.ApiUrl} {responseMessage.StatusCode} {await responseMessage.Content.ReadAsStringAsync()}");
+                    Thread.Sleep(time);
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+        }, TaskCreationOptions.LongRunning);
+    }
+    
+    public async ValueTask StopAsync()
+    {
+        await _source.CancelAsync();
+    }
 }
 
