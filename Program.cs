@@ -46,6 +46,8 @@ public static class Program
                 collection.AddSingleton<OneBotService>();
                 collection.AddSingleton<RoomsService>();
                 collection.AddSingleton<EACService>();
+                collection.AddSingleton<ActiveService>();
+                collection.AddScoped<HttpClient>();
                 collection.Configure<ServerConfig>(config);
             })
             .UseSerilog();
@@ -173,9 +175,8 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
     }
 }
 
-public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config)
+public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config, HttpClient _Client)
 {
-    public readonly HttpClient _Client = new();
     private readonly ServerConfig _config = config.Value;
     public bool ConnectIng;
     public List<(long, bool)> _Reads = [];
@@ -511,14 +512,13 @@ public class ServerConfig
     public int Time = 30;
 }
 
-public class ActiveService(ILogger<ActiveService> _logger, IOptions<ServerConfig> _options)
+public class ActiveService(ILogger<ActiveService> _logger, IOptions<ServerConfig> _options, HttpClient _client)
 {
     public Task? _Task;
     private readonly CancellationTokenSource _source = new();
-    private HttpClient _client = new();
-    public async ValueTask StartAsync()
+    public ValueTask StartAsync()
     {
-        if(_options.Value.ApiUrl == string.Empty) return;
+        if(_options.Value.ApiUrl == string.Empty) return ValueTask.CompletedTask;
         _source.Token.Register(() => _Task?.Dispose());
         var time = TimeSpan.FromSeconds(30);
         _Task = Task.Factory.StartNew(async () =>
@@ -537,6 +537,7 @@ public class ActiveService(ILogger<ActiveService> _logger, IOptions<ServerConfig
                 }
             }
         }, TaskCreationOptions.LongRunning);
+        return ValueTask.CompletedTask;
     }
     
     public async ValueTask StopAsync()
