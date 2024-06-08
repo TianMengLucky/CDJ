@@ -1,4 +1,7 @@
-﻿
+﻿using Discord;
+using Discord.WebSocket;
+using System;
+using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
@@ -7,7 +10,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Serilog;
 
-namespace CDJ;
+namespace TONEX_CHAN;
 
 public static class Program
 {
@@ -41,9 +44,10 @@ public static class Program
             .ConfigureAppConfiguration(builder => builder.AddConfiguration(config))
             .ConfigureServices((context, collection) => 
             { 
-                collection.AddHostedService<CDJService>(); 
+                collection.AddHostedService<TONEX_CHANService>(); 
                 collection.AddSingleton<SocketService>(); 
                 collection.AddSingleton<OneBotService>();
+                collection.AddSingleton<DiscordBotService>();
                 collection.AddSingleton<RoomsService>();
                 collection.AddSingleton<EACService>();
                 collection.Configure<ServerConfig>(config);
@@ -53,7 +57,7 @@ public static class Program
     }
 }
 
-public class CDJService(ILogger<CDJService> logger,SocketService socketService, OneBotService oneBotService, EACService eacService) : IHostedService
+public class TONEX_CHANService(ILogger<TONEX_CHANService> logger,SocketService socketService, OneBotService oneBotService, DiscordBotService discordBotService, EACService eacService) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -99,7 +103,7 @@ public class CDJService(ILogger<CDJService> logger,SocketService socketService, 
     }
 }
 
-public class SocketService(ILogger<SocketService> logger, RoomsService roomsService, OneBotService oneBotService, IOptions<ServerConfig> config)
+public class SocketService(ILogger<SocketService> logger, RoomsService roomsService, OneBotService oneBotService, DiscordBotService discordBotService, IOptions<ServerConfig> config)
 {
     public TcpListener _TcpListener = null!;
     
@@ -116,7 +120,7 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
         logger.LogInformation("CreateSocket");
         _TcpListener = new TcpListener(Address, _config.Port);
         _TcpListener.Start();
-        logger.LogInformation($"Start :{_config.Ip} {_config.Port} {_config.SendToQun} {_config.BotHttpUrl} {_config.QQID}");
+        logger.LogInformation($"Start :{_config.Ip} {_config.Port} {_config.SendToQQ_Group} {_config.BotHttpUrl} {_config.QQID}");
         _cancellationToken.Token.Register(() => _TcpListener.Dispose());
         _Task = Task.Factory.StartNew(async () =>
         {
@@ -137,8 +141,10 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
                     }
 
                     roomsService.TryGetRoom(str, out var room);
-                    var message = roomsService.ParseRoom(room);
-                    await oneBotService.SendMessage(message);
+                    var message_QQ = roomsService.ParseRoom_QQ(room);
+                    await oneBotService.SendMessage(message_QQ);
+                    var message_DC = roomsService.ParseRoom_DC(room);
+                    await discordBotService.SendMessage(message_DC);
                 }
                 catch (Exception e)
                 {
@@ -156,13 +162,19 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
     }
 }
 
-public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config)
+public class OneBotService
 {
-    public readonly HttpClient _Client = new();
-    private readonly ServerConfig _config = config.Value;
-    public bool ConnectIng;
-    public List<(long, bool)> _Reads = [];
+    private readonly ILogger<OneBotService> _logger;
+    private readonly ServerConfig _config;
+    private readonly HttpClient _client = new();
+    private bool _connecting;
+    private readonly List<(long, bool)> _reads = new();
 
+    public OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config)
+    {
+        _logger = logger;
+        _config = config.Value;
+    }
 
     public async Task Read()
     {
@@ -174,81 +186,145 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
             var line = await reader.ReadLineAsync();
             if (line == null) continue;
             var str = line.Replace(" ", string.Empty).Split('|');
-            _Reads.Add((long.Parse(str[0]), bool.Parse(str[1])));
+            _reads.Add((long.Parse(str[0]), bool.Parse(str[1])));
         }
     }
-    
+
     public async Task<bool> ConnectBot()
     {
-        var get = await _Client.GetAsync($"{_config.BotHttpUrl}/get_login_info");
+        var get = await _client.GetAsync($"{_config.BotHttpUrl}/get_login_info");
         if (!get.IsSuccessStatusCode)
             return false;
 
-        logger.LogInformation(await get.Content.ReadAsStringAsync());
-        ConnectIng = true;
-        
+        _logger.LogInformation(await get.Content.ReadAsStringAsync());
+        _connecting = true;
+
         return true;
     }
 
     public async Task SendMessage(string message)
     {
-        if (!ConnectIng) 
+        if (!_connecting)
             await ConnectBot();
         if (_config.QQID != 0)
         {
-            if (_config.SendToQun)
+            if (_config.SendToQQ_Group)
             {
-                await SendMessageToQun(message, _config.QQID);
+                await SendMessageToQQ_Group(message, _config.QQID);
             }
             else
             {
-                await SendMessageToLXR(message, _config.QQID);
+                await SendMessageToQQ_ContactPerson(message, _config.QQID);
             }
         }
         else
         {
-            foreach (var (id, isQun) in _Reads)
+            foreach (var (id, isQQ_Group) in _reads)
             {
-                if (isQun)
+                if (isQQ_Group)
                 {
-                    await SendMessageToQun(message, id);
+                    await SendMessageToQQ_Group(message, id);
                 }
                 else
                 {
-                    await SendMessageToLXR(message, id);
+                    await SendMessageToQQ_ContactPerson(message, id);
                 }
             }
         }
     }
 
-    public async Task SendMessageToQun(string message, long id)
+    public async Task SendMessageToQQ_Group(string message, long id)
     {
         var jsonString = JsonSerializer.Serialize(new GroupMessage
         {
             message = message,
             group_id = id.ToString()
         });
-        await _Client.PostAsync($"{_config.BotHttpUrl}/send_group_msg", new StringContent(jsonString));
-        logger.LogInformation($"Send To Group id:{id} message:{message}");
+        await _client.PostAsync($"{_config.BotHttpUrl}/send_group_msg", new StringContent(jsonString));
+        _logger.LogInformation($"Send To Group id:{id} message:{message}");
     }
-    
-    public async Task SendMessageToLXR(string message, long id)
+
+    public async Task SendMessageToQQ_ContactPerson(string message, long id)
     {
         var jsonString = JsonSerializer.Serialize(new UserMessage
         {
             message = message,
             user_id = id.ToString()
         });
-        await _Client.PostAsync($"{_config.BotHttpUrl}/send_private_msg", new StringContent(jsonString));
-        logger.LogInformation($"Send To User id:{id} message:{message}");
+        await _client.PostAsync($"{_config.BotHttpUrl}/send_private_msg", new StringContent(jsonString));
+        _logger.LogInformation($"Send To User id:{id} message:{message}");
     }
-    
+
     public Task Stop()
     {
-        _Client.Dispose();
+        _client.Dispose();
         return Task.CompletedTask;
     }
+
 }
+
+public class DiscordBotService
+{
+    private DiscordSocketClient _client;
+    private readonly List<ulong> _channelIds = new();
+
+    public static void Main(string[] args)
+        => new DiscordBotService().MainAsync().GetAwaiter().GetResult();
+
+    public async Task MainAsync()
+    {
+        _client = new DiscordSocketClient();
+
+        _client.Log += LogAsync;
+
+        string token = "S93tx9SWr6wARS9T1CLnlfRIRaoNwZ_O"; // 替换为你的Bot的token
+        await _client.LoginAsync(TokenType.Bot, token);
+        await _client.StartAsync();
+
+        _client.MessageReceived += MessageReceivedAsync;
+
+        // 保持程序运行
+        await Task.Delay(-1);
+    }
+
+    private Task LogAsync(LogMessage log)
+    {
+        Console.WriteLine(log.ToString());
+        return Task.CompletedTask;
+    }
+
+    private async Task MessageReceivedAsync(SocketMessage message)
+    {
+        var channel = message.Channel as SocketTextChannel;
+        await SendMessage(message.Content);
+    }
+
+    public async Task SendMessage(string message)
+    {
+        if (_client == null)
+        {
+            Console.WriteLine("Error: Client is not initialized.");
+            return;
+        }
+        _channelIds.Add(1248050001506992139);
+        var guilds = _client.Guilds;
+        foreach (var guild in guilds)
+        {
+            foreach (var channelId in _channelIds)
+            {
+                var targetChannel = guild.GetChannel(channelId) as ISocketMessageChannel;
+                if (targetChannel != null)
+                {
+                    await targetChannel.SendMessageAsync(message);
+                    Console.WriteLine($"Sent message to channel id: {channelId}");
+                }
+            }
+        }
+    }
+}
+
+
+
 
 public class Login_Info
 {
@@ -288,11 +364,7 @@ public class RoomsService
         
         var code = strings[0];
         var BuildVersion = "";
-        Version? version = null;
-        if (Version.TryParse(strings[1], out var v))
-            version = v;
-        else
-            BuildVersion = strings[1];
+        string version = strings[1];
 
         var count = int.Parse(strings[2]);
         var langId = Enum.Parse<LangName>(strings[3]);
@@ -305,9 +377,9 @@ public class RoomsService
     }
 
 
-    public string ParseRoom(Room room)
+    public string ParseRoom_QQ(Room room)
     {
-        var ln = lang.TryGetValue(room.LangId, out var value) ? value : Enum.GetName(room.LangId);
+        var ln = lang_forZh.TryGetValue(room.LangId, out var value) ? value : Enum.GetName(room.LangId);
         var ver = room.Version == null ? room.BuildId : room.Version.ToString();
         var def = $@"房间号: {room.Code}
 版本号: {ver}
@@ -319,14 +391,64 @@ public class RoomsService
         return def;
     }
 
-    public static readonly Dictionary<LangName, string> lang = new()
+    public static readonly Dictionary<LangName, string> lang_forZh = new()
     {
-        {LangName.SChinese, "简体中文"},
-        { LangName.TChinese , "繁体中文"}
+        { LangName.English, "英语" },
+    { LangName.Latam, "拉丁美洲" },
+    { LangName.Brazilian, "巴西" },
+    { LangName.Portuguese, "葡萄牙" },
+    { LangName.Korean, "韩语" },
+    { LangName.Russian, "俄语" },
+    { LangName.Dutch, "荷兰语" },
+    { LangName.Filipino, "菲律宾语" },
+    { LangName.French, "法语" },
+    { LangName.German, "德语" },
+    { LangName.Italian, "意大利语" },
+    { LangName.Japanese, "日语" },
+    { LangName.Spanish, "西班牙语" },
+    { LangName.SChinese, "简体中文" },
+    { LangName.TChinese, "繁体中文" },
+    { LangName.Irish, "爱尔兰语" }
     };
+
+    public string ParseRoom_DC(Room room)
+    {
+        var ln = lang_forEn.TryGetValue(room.LangId, out var value) ? value : Enum.GetName(room.LangId);
+        var ver = room.Version == null ? room.BuildId : room.Version.ToString();
+        var def = $@"Room Code: {room.Code}
+Version: {ver}
+People: {room.Count}
+Language: {ln}
+Server: {room.ServerName}
+Host: {room.PlayerName}
+"; ;
+        return def;
+    }
+
+    public static readonly Dictionary<LangName, string> lang_forEn = new()
+    {
+      
+    { LangName.English, "English" },
+    { LangName.Latam, "Latam" },
+    { LangName.Brazilian, "Brazilian" },
+    { LangName.Portuguese, "Portuguese" },
+    { LangName.Korean, "Korean" },
+    { LangName.Russian, "Russian" },
+    { LangName.Dutch, "Dutch" },
+    { LangName.Filipino, "Filipino" },
+    { LangName.French, "French" },
+    { LangName.German, "German" },
+    { LangName.Italian, "Italian" },
+    { LangName.Japanese, "Japanese" },
+    { LangName.Spanish, "Spanish" },
+    { LangName.SChinese, "SChinese" },
+    { LangName.TChinese, "TChinese" },
+    { LangName.Irish, "Irish" }
+
+};
 }
 
-public record Room(string Code, Version? Version, int Count, LangName LangId, string ServerName, string PlayerName, string BuildId = "");
+public record Room(string Code, string Version, int Count, LangName LangId, string ServerName, string PlayerName, string BuildId = "");
 
 public enum LangName : byte
 {
@@ -483,7 +605,7 @@ public class ServerConfig
     public int Port { get; set; } = 25000;
 
     public string BotHttpUrl { get; set; } = "http://localhost:3000";
-    public bool SendToQun { get; set; } = false;
+    public bool SendToQQ_Group { get; set; } = false;
     public long QQID { get; set; }
     public int EACPort { get; set; } = 25250;
     public int EACCount { get; set; } = 5;

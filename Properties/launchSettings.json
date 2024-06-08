@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "TONEX_CHAN": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:50783;http://localhost:50784"
+    }
+  }
+}
