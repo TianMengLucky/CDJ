@@ -1,10 +1,12 @@
 {
-  "Ip":"0.0.0.0",
+  "Ip":"127.0.0.1",
   "Port":25455,
   "BotHttpUrl":"http://localhost:3500",
   "SendToQQ_Group":true,
   "QQID":2774942196,
   "EACPort":25545,
   "EACCount": 5,
-  "EACPath": "./EAC.txt"
+  "EACPath": "./EAC.txt",
+  "ApiUrl": "",
+  "Time": 30
 }

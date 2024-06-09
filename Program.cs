@@ -50,6 +50,8 @@ public static class Program
                 collection.AddSingleton<DiscordBotService>();
                 collection.AddSingleton<RoomsService>();
                 collection.AddSingleton<EACService>();
+                collection.AddSingleton<ActiveService>();
+                collection.AddScoped<HttpClient>();
                 collection.Configure<ServerConfig>(config);
             })
             .UseSerilog();
@@ -57,7 +59,13 @@ public static class Program
     }
 }
 
-public class TONEX_CHANService(ILogger<TONEX_CHANService> logger,SocketService socketService, OneBotService oneBotService, DiscordBotService discordBotService, EACService eacService) : IHostedService
+public class CDJService
+(
+    ILogger<CDJService> logger,
+    SocketService socketService, 
+    OneBotService oneBotService,
+    EACService eacService,
+    ActiveService activeService) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -93,6 +101,16 @@ public class TONEX_CHANService(ILogger<TONEX_CHANService> logger,SocketService s
         {
             // ignored
         }
+
+        try
+        {
+            await activeService.StartAsync();
+        }
+        catch
+        {
+            // ignored
+            logger.LogError("Start Error Active Service");
+        }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -100,6 +118,7 @@ public class TONEX_CHANService(ILogger<TONEX_CHANService> logger,SocketService s
         await socketService.Stop();
         await oneBotService.Stop();
         await eacService.Stop();
+        await activeService.StopAsync();
     }
 }
 
@@ -162,13 +181,11 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
     }
 }
 
-public class OneBotService
+public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config, HttpClient _Client)
 {
-    private readonly ILogger<OneBotService> _logger;
-    private readonly ServerConfig _config;
-    private readonly HttpClient _client = new();
-    private bool _connecting;
-    private readonly List<(long, bool)> _reads = new();
+    private readonly ServerConfig _config = config.Value;
+    public bool ConnectIng;
+    public List<(long, bool)> _Reads = [];
 
     public OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config)
     {
@@ -612,5 +629,41 @@ public class ServerConfig
     public string EACPath { get; set; } = "./EAC.txt";
 
     public string ReadPath = string.Empty;
+    public string ApiUrl = string.Empty;
+    public int Time = 30;
+}
+
+public class ActiveService(ILogger<ActiveService> _logger, IOptions<ServerConfig> _options, HttpClient _client)
+{
+    public Task? _Task;
+    private readonly CancellationTokenSource _source = new();
+    public ValueTask StartAsync()
+    {
+        if(_options.Value.ApiUrl == string.Empty) return ValueTask.CompletedTask;
+        _source.Token.Register(() => _Task?.Dispose());
+        var time = TimeSpan.FromSeconds(30);
+        _Task = Task.Factory.StartNew(async () =>
+        {
+            while (!_source.IsCancellationRequested)
+            {
+                try
+                {
+                    var responseMessage = await _client.GetAsync(_options.Value.ApiUrl);
+                    _logger.LogInformation($"Get{_options.Value.ApiUrl} {responseMessage.StatusCode} {await responseMessage.Content.ReadAsStringAsync()}");
+                    Thread.Sleep(time);
+                }
+                catch
+                {
+                    // ignored
+                }
+            }
+        }, TaskCreationOptions.LongRunning);
+        return ValueTask.CompletedTask;
+    }
+    
+    public async ValueTask StopAsync()
+    {
+        await _source.CancelAsync();
+    }
 }
 
