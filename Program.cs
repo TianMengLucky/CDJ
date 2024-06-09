@@ -59,11 +59,12 @@ public static class Program
     }
 }
 
-public class CDJService
+public class TONEX_CHANService
 (
-    ILogger<CDJService> logger,
+    ILogger<TONEX_CHANService> logger,
     SocketService socketService, 
     OneBotService oneBotService,
+    DiscordBotService discordBotService,
     EACService eacService,
     ActiveService activeService) : IHostedService
 {
@@ -117,6 +118,7 @@ public class CDJService
     {
         await socketService.Stop();
         await oneBotService.Stop();
+        await discordBotService.Stop();
         await eacService.Stop();
         await activeService.StopAsync();
     }
@@ -181,17 +183,11 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
     }
 }
 
-public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config, HttpClient _Client)
+public class OneBotService(ILogger<OneBotService> _logger, IOptions<ServerConfig> config, HttpClient _client)
 {
     private readonly ServerConfig _config = config.Value;
     public bool ConnectIng;
-    public List<(long, bool)> _Reads = [];
-
-    public OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config)
-    {
-        _logger = logger;
-        _config = config.Value;
-    }
+    public List<(long, bool)> _reads = [];
 
     public async Task Read()
     {
@@ -214,14 +210,14 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
             return false;
 
         _logger.LogInformation(await get.Content.ReadAsStringAsync());
-        _connecting = true;
+        ConnectIng = true;
 
         return true;
     }
 
     public async Task SendMessage(string message)
     {
-        if (!_connecting)
+        if (!ConnectIng)
             await ConnectBot();
         if (_config.QQID != 0)
         {
@@ -280,29 +276,30 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
 
 }
 
-public class DiscordBotService
+public class DiscordBotService(ILogger<DiscordBotService> _logger, IOptions<ServerConfig> config, DiscordSocketClient _client)
 {
-    private DiscordSocketClient _client;
     private readonly List<ulong> _channelIds = new();
 
-    public static void Main(string[] args)
-        => new DiscordBotService().MainAsync().GetAwaiter().GetResult();
-
-    public async Task MainAsync()
+    public bool ConnectIng;
+    public async Task<bool> ConnectBot()
     {
-        _client = new DiscordSocketClient();
+        try
+        {
+            string token = "S93tx9SWr6wARS9T1CLnlfRIRaoNwZ_O";
+            await _client.LoginAsync(TokenType.Bot, token);
+            await _client.StartAsync();
 
-        _client.Log += LogAsync;
 
-        string token = "S93tx9SWr6wARS9T1CLnlfRIRaoNwZ_O"; // 替换为你的Bot的token
-        await _client.LoginAsync(TokenType.Bot, token);
-        await _client.StartAsync();
-
-        _client.MessageReceived += MessageReceivedAsync;
-
-        // 保持程序运行
-        await Task.Delay(-1);
+            _logger.LogInformation("Connected to Discord bot successfully.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to connect to Discord bot: {ex.Message}");
+            return false;
+        }
     }
+
 
     private Task LogAsync(LogMessage log)
     {
@@ -318,6 +315,8 @@ public class DiscordBotService
 
     public async Task SendMessage(string message)
     {
+        if (!ConnectIng)
+            await ConnectBot();
         if (_client == null)
         {
             Console.WriteLine("Error: Client is not initialized.");
@@ -337,6 +336,11 @@ public class DiscordBotService
                 }
             }
         }
+    }
+    public Task Stop()
+    {
+        _client.Dispose();
+        return Task.CompletedTask;
     }
 }
 
