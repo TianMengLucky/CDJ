@@ -162,10 +162,18 @@ public class SocketService(ILogger<SocketService> logger, RoomsService roomsServ
                     }
 
                     roomsService.TryGetRoom(str, out var room);
-                    var message_QQ = roomsService.ParseRoom_QQ(room);
-                    await oneBotService.SendMessage(message_QQ);
-                    var message_DC = roomsService.ParseRoom_DC(room);
-                    await discordBotService.SendMessage(message_DC);
+                    try
+                    {
+                        var message_QQ = roomsService.ParseRoom_QQ(room);
+                        await oneBotService.SendMessage(message_QQ);
+                    }
+                    catch { }
+                    try
+                    {
+                        var message_DC = roomsService.ParseRoom_DC(room);
+                        await discordBotService.SendMessage(message_DC);
+                    }
+                    catch { }
                 }
                 catch (Exception e)
                 {
@@ -298,19 +306,6 @@ public class DiscordBotService(ILogger<DiscordBotService> _logger, IOptions<Serv
             _logger.LogError($"Failed to connect to Discord bot: {ex.Message}");
             return false;
         }
-    }
-
-
-    private Task LogAsync(LogMessage log)
-    {
-        Console.WriteLine(log.ToString());
-        return Task.CompletedTask;
-    }
-
-    private async Task MessageReceivedAsync(SocketMessage message)
-    {
-        var channel = message.Channel as SocketTextChannel;
-        await SendMessage(message.Content);
     }
 
     public async Task SendMessage(string message)
