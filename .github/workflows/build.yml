@@ -17,12 +17,12 @@ jobs:
           dotnet-version: 8.x
 
       - name: Build
-        run: dotnet build CDJ.csproj --configuration Release --output ./Release
+        run: dotnet build TONEX_CHAN.csproj --configuration Release --output ./Release
 
       - name: Upload
         uses: actions/upload-artifact@v4.3.1
         with:
-          name: CDJ-Linux
+          name: TONEX_CHAN-Linux
           path: ./Release/
           
   BuildWindows:
@@ -39,10 +39,10 @@ jobs:
           dotnet-version: 8.x
 
       - name: Build
-        run: dotnet build CDJ.csproj --configuration Release --output ./Release
+        run: dotnet build TONEX_CHAN.csproj --configuration Release --output ./Release
 
       - name: Upload
         uses: actions/upload-artifact@v4.3.1
         with:
-          name: CDJ-Windows
+          name: TONEX_CHAN-Windows
           path: ./Release/
