@@ -2,7 +2,7 @@
   "Ip":"0.0.0.0",
   "Port":25455,
   "BotHttpUrl":"http://localhost:3000",
-  "SendToQQ_Group":true,
+  "SendToQQ_Group":false,
   "QQID":733425569,
   "EACPort":25545,
   "EACCount": 5,
