@@ -1,7 +1,5 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using System;
-using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
@@ -35,28 +33,38 @@ public static class Program
 
     public static IHostBuilder Create(string[] args)
     {
-        var hostBuilder = Host.CreateDefaultBuilder(args).UseContentRoot(Directory.GetCurrentDirectory());
-        var config = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("config.json")
-            .Build();
-        
-        hostBuilder
-            .ConfigureAppConfiguration(builder => builder.AddConfiguration(config))
-            .ConfigureServices((context, collection) => 
-            { 
-                collection.AddHostedService<TONEX_CHANService>(); 
-                collection.AddSingleton<SocketService>(); 
-                collection.AddSingleton<OneBotService>();
-                collection.AddSingleton<DiscordBotService>();
-                collection.AddSingleton<RoomsService>();
-                collection.AddSingleton<EACService>();
-                collection.AddSingleton<ActiveService>();
-                collection.AddScoped<HttpClient>();
-                collection.Configure<ServerConfig>(config);
-            })
-            .UseSerilog();
-        return hostBuilder;
+        try
+        {
+            var hostBuilder = Host.CreateDefaultBuilder(args).UseContentRoot(Directory.GetCurrentDirectory());
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("config.json")
+                .Build();
+
+            hostBuilder
+                .ConfigureAppConfiguration(builder => builder.AddConfiguration(config))
+                .ConfigureServices((context, collection) =>
+                {
+                    collection.AddHostedService<TONEX_CHANService>();
+                    collection.AddSingleton<SocketService>();
+                    collection.AddSingleton<OneBotService>();
+                    collection.AddSingleton<DiscordBotService>();
+                    collection.AddSingleton<RoomsService>();
+                    collection.AddSingleton<EACService>();
+                    collection.AddSingleton<ActiveService>();
+                    collection.AddScoped<HttpClient>();
+                    collection.Configure<ServerConfig>(config);
+                })
+                .UseSerilog();
+
+            return hostBuilder; 
+        }
+        catch (Exception e)
+        {
+            Log.Logger.Error($"Run Error: \n {e}");
+          
+            throw;
+        }
     }
 }
 
@@ -285,7 +293,7 @@ public class OneBotService(ILogger<OneBotService> _logger, IOptions<ServerConfig
 
 }
 
-public class DiscordBotService(ILogger<DiscordBotService> _logger, IOptions<ServerConfig> config, DiscordSocketClient _client)
+public class DiscordBotService(ILogger<DiscordBotService> _logger, DiscordSocketClient _client)
 {
     private readonly List<ulong> _channelIds = new();
 
