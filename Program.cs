@@ -48,7 +48,7 @@ public static class Program
                     collection.AddHostedService<TONEX_CHANService>();
                     collection.AddSingleton<SocketService>();
                     collection.AddSingleton<OneBotService>();
-                    collection.AddSingleton<DiscordBotService>();
+                //    collection.AddSingleton<DiscordBotService>();
                     collection.AddSingleton<RoomsService>();
                     collection.AddSingleton<EACService>();
                     collection.AddSingleton<ActiveService>();
