@@ -48,7 +48,7 @@ public static class Program
                     collection.AddHostedService<CDJService>();
                     collection.AddSingleton<SocketService>();
                     collection.AddSingleton<OneBotService>();
-                //    collection.AddSingleton<DiscordBotService>();
+                    collection.AddSingleton<DiscordBotService>();
                     collection.AddSingleton<RoomsService>();
                     collection.AddSingleton<EACService>();
                     collection.AddSingleton<ActiveService>();
