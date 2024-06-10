@@ -55,8 +55,6 @@ public static class Program
                     collection.AddScoped<HttpClient>();
                     collection.AddScoped<DiscordSocketClient>();
                     collection.Configure<ServerConfig>(config);
-
-
                 })
                 .UseSerilog();
 
@@ -405,28 +403,38 @@ public class RoomsService
     {
         room = null;
         var strings = text.Split('|');
+        Log.Logger.Information("Get Room Length");
         if (strings.Length < 6) return false;
-        
+
+        Log.Logger.Information("Get Room code");
         var code = strings[0];
         if (code.Length != 6) return false;
 
+        Log.Logger.Information("Get Room Version");
         var BuildVersion = "";
         string version = strings[1];
 
         bool isValidVersion = IsVersionValid(version);
         if (isValidVersion) return false;
 
+        Log.Logger.Information("Get Room Player Count");
         string input = strings[2]; 
         string pattern = @"^\d+$";
         if (!Regex.IsMatch(input, pattern)) return false;
         var count = int.Parse(strings[2]);
 
+        Log.Logger.Information("Get Room Language");
         var langId = Enum.Parse<LangName>(strings[3]);
+
+        Log.Logger.Information("Get Room Server");
         var serverName = strings[4];
+
+        Log.Logger.Information("Get Room Host");
         var playName = strings[5];
         
         room = new Room(code, version, count, langId, serverName, playName, BuildVersion);
         _Rooms.Add(room);
+        Log.Logger.Information("Get Room");
         return true;
     }
     static bool IsVersionValid(string version)
@@ -447,6 +455,7 @@ public class RoomsService
 服务器: {room.ServerName}
 房主: {room.PlayerName}
 "; ;
+        Log.Logger.Information(def);
         return def;
     }
 
@@ -481,6 +490,7 @@ Language: {ln}
 Server: {room.ServerName}
 Host: {room.PlayerName}
 "; ;
+        Log.Logger.Information(def);
         return def;
     }
 
