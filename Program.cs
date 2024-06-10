@@ -54,9 +54,6 @@ public static class Program
                     collection.AddScoped<HttpClient>();
                     collection.Configure<ServerConfig>(config);
 
-                    // 添加 DiscordSocketClient 的配置
-                    var discordSocketClient = new DiscordSocketClient();
-                    collection.AddSingleton(discordSocketClient);
                     collection.AddSingleton<DiscordBotService>();
                 })
                 .UseSerilog();
@@ -297,17 +294,17 @@ public class OneBotService(ILogger<OneBotService> _logger, IOptions<ServerConfig
 
 }
 
-public class DiscordBotService
+public class DiscordBotService(ILogger<DiscordBotService> _logger, DiscordSocketClient _client)
 {
-    private readonly ILogger<DiscordBotService> _logger;
-    private readonly DiscordSocketClient _client;
+    //private readonly ILogger<DiscordBotService> _logger;
+    //private readonly DiscordSocketClient _client;
     private readonly List<ulong> _channelIds = new();
 
-    public DiscordBotService(ILogger<DiscordBotService> logger, DiscordSocketClient client)
-    {
-        _logger = logger;
-        _client = client;
-    }
+    //public DiscordBotService
+    //{
+    //    _logger = logger;
+    //    _client = client;
+    //}
 
     private bool _connecting;
 
