@@ -305,43 +305,45 @@ public class DiscordBotService
         _client = client;
     }
 
-    public bool ConnectIng;
+    private bool _connecting;
+
     public async Task<bool> ConnectBot()
     {
+        if (_connecting)
+        {
+            return true; // Already connecting, do nothing
+        }
+
         try
         {
+            _connecting = true;
             if (_client == null)
             {
                 _logger.LogError("Error: Client is not initialized.");
+                _connecting = false;
                 return false;
             }
+
             string token = "S93tx9SWr6wARS9T1CLnlfRIRaoNwZ_O";
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
 
             _logger.LogInformation("Connected to Discord bot successfully.");
+            _connecting = false;
             return true;
         }
         catch (Exception ex)
         {
             _logger.LogError($"Failed to connect to Discord bot: {ex.Message}");
+            _connecting = false;
             return false;
         }
     }
 
     public async Task SendMessage(string message)
     {
-        if (!ConnectIng)
+        if (!await ConnectBot())
         {
-            if (!await ConnectBot())
-            {
-                return;
-            }
-        }
-
-        if (_client == null)
-        {
-            _logger.LogError("Error: Client is not initialized.");
             return;
         }
 
@@ -361,7 +363,8 @@ public class DiscordBotService
 
     public Task Stop()
     {
-        _client.Dispose();
+        _connecting = false;
+        _client?.Dispose();
         return Task.CompletedTask;
     }
 }
