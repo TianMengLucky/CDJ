@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Serilog;
+using System.Text.RegularExpressions;
 
 namespace TONEX_CHAN;
 
@@ -375,14 +376,22 @@ public class RoomsService
     {
         room = null;
         var strings = text.Split('|');
-        if (strings.Length < 6)
-            return false;
+        if (strings.Length < 6) return false;
         
         var code = strings[0];
+        if (code.Length != 6) return false;
+
         var BuildVersion = "";
         string version = strings[1];
 
+        bool isValidVersion = IsVersionValid(version);
+        if (isValidVersion) return false;
+
+        string input = strings[2]; 
+        string pattern = @"^\d+$";
+        if (!Regex.IsMatch(input, pattern)) return false;
         var count = int.Parse(strings[2]);
+
         var langId = Enum.Parse<LangName>(strings[3]);
         var serverName = strings[4];
         var playName = strings[5];
@@ -391,7 +400,12 @@ public class RoomsService
         _Rooms.Add(room);
         return true;
     }
-
+    static bool IsVersionValid(string version)
+    {
+        string pattern = @"^\d+\.\d+_\d{8}_(Debug|Canary|Dev|Preview)(?:_\d+)?$";
+        Regex regex = new (pattern);
+        return regex.IsMatch(version);
+    }
 
     public string ParseRoom_QQ(Room room)
     {
