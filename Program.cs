@@ -293,19 +293,31 @@ public class OneBotService(ILogger<OneBotService> _logger, IOptions<ServerConfig
 
 }
 
-public class DiscordBotService(ILogger<DiscordBotService> _logger, DiscordSocketClient _client)
+public class DiscordBotService
 {
+    private readonly ILogger<DiscordBotService> _logger;
+    private readonly DiscordSocketClient _client;
     private readonly List<ulong> _channelIds = new();
+
+    public DiscordBotService(ILogger<DiscordBotService> logger, DiscordSocketClient client)
+    {
+        _logger = logger;
+        _client = client;
+    }
 
     public bool ConnectIng;
     public async Task<bool> ConnectBot()
     {
         try
         {
+            if (_client == null)
+            {
+                _logger.LogError("Error: Client is not initialized.");
+                return false;
+            }
             string token = "S93tx9SWr6wARS9T1CLnlfRIRaoNwZ_O";
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
-
 
             _logger.LogInformation("Connected to Discord bot successfully.");
             return true;
@@ -320,17 +332,22 @@ public class DiscordBotService(ILogger<DiscordBotService> _logger, DiscordSocket
     public async Task SendMessage(string message)
     {
         if (!ConnectIng)
-            await ConnectBot();
+        {
+            if (!await ConnectBot())
+            {
+                return;
+            }
+        }
+
         if (_client == null)
         {
             _logger.LogError("Error: Client is not initialized.");
             return;
         }
-        _channelIds.Add(1248050001506992139);
-        var guilds = _client.Guilds;
-        foreach (var guild in guilds)
+
+        foreach (var guild in _client.Guilds)
         {
-            foreach (var channelId in _channelIds)
+            foreach (var channelId in _channelIds.ToList())  // 使用ToList()复制一份集合进行循环
             {
                 var targetChannel = guild.GetChannel(channelId) as ISocketMessageChannel;
                 if (targetChannel != null)
@@ -341,15 +358,13 @@ public class DiscordBotService(ILogger<DiscordBotService> _logger, DiscordSocket
             }
         }
     }
+
     public Task Stop()
     {
         _client.Dispose();
         return Task.CompletedTask;
     }
 }
-
-
-
 
 public class Login_Info
 {
