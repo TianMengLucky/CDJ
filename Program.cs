@@ -48,12 +48,16 @@ public static class Program
                     collection.AddHostedService<CDJService>();
                     collection.AddSingleton<SocketService>();
                     collection.AddSingleton<OneBotService>();
-                    collection.AddSingleton<DiscordBotService>();
                     collection.AddSingleton<RoomsService>();
                     collection.AddSingleton<EACService>();
                     collection.AddSingleton<ActiveService>();
                     collection.AddScoped<HttpClient>();
                     collection.Configure<ServerConfig>(config);
+
+                    // 添加 DiscordSocketClient 的配置
+                    var discordSocketClient = new DiscordSocketClient();
+                    collection.AddSingleton(discordSocketClient);
+                    collection.AddSingleton<DiscordBotService>();
                 })
                 .UseSerilog();
 
