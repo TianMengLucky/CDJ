@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "TONEX_CHAN": {
+    "CDJ": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {

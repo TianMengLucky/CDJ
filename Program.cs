@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 using Serilog;
 using System.Text.RegularExpressions;
 
-namespace TONEX_CHAN;
+namespace CDJ;
 
 public static class Program
 {
@@ -45,7 +45,7 @@ public static class Program
                 .ConfigureAppConfiguration(builder => builder.AddConfiguration(config))
                 .ConfigureServices((context, collection) =>
                 {
-                    collection.AddHostedService<TONEX_CHANService>();
+                    collection.AddHostedService<CDJService>();
                     collection.AddSingleton<SocketService>();
                     collection.AddSingleton<OneBotService>();
                 //    collection.AddSingleton<DiscordBotService>();
@@ -68,9 +68,9 @@ public static class Program
     }
 }
 
-public class TONEX_CHANService
+public class CDJService
 (
-    ILogger<TONEX_CHANService> logger,
+    ILogger<CDJService> logger,
     SocketService socketService, 
     OneBotService oneBotService,
     DiscordBotService discordBotService,
