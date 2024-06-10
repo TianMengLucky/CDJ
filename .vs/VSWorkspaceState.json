@@ -1,7 +1,12 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\.github",
+    "\\.github\\workflows",
+    "\\.idea",
+    "\\.idea\\.idea.CDJ\\.idea",
+    "\\Properties"
   ],
-  "SelectedNode": "\\C:\\Users\\YJNSH\\Source\\Repos\\CDJ",
+  "SelectedNode": "\\CDJ.sln",
   "PreviewInSolutionExplorer": false
 }

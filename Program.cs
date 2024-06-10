@@ -314,7 +314,7 @@ public class DiscordBotService(ILogger<DiscordBotService> _logger, IOptions<Serv
             await ConnectBot();
         if (_client == null)
         {
-            Console.WriteLine("Error: Client is not initialized.");
+            _logger.LogError("Error: Client is not initialized.");
             return;
         }
         _channelIds.Add(1248050001506992139);
@@ -327,7 +327,7 @@ public class DiscordBotService(ILogger<DiscordBotService> _logger, IOptions<Serv
                 if (targetChannel != null)
                 {
                     await targetChannel.SendMessageAsync(message);
-                    Console.WriteLine($"Sent message to channel id: {channelId}");
+                    _logger.LogInformation($"Sent message to channel id: {channelId}");
                 }
             }
         }
