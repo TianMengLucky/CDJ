@@ -27,8 +27,8 @@ public static class Program
 
     public static void SetLog(IConfiguration config)
     {
-        var serverConfig = config.GetSection(ServerConfig.Section).Get<ServerConfig>()!;
-        var path = serverConfig.LogPath.Replace("{time}", DateTime.Now.ToString("yyyy_ddd_MM_hh_mm"));
+        var serverConfig = config.Get<ServerConfig>()!;
+        var path = serverConfig.LogPath.Replace("{time}", DateTime.Now.ToString("yyyy_dd_MM[hh-mm]"));
         
         Log.Logger = new LoggerConfiguration().
             WriteTo.Console()
@@ -56,13 +56,22 @@ public static class Program
             .ConfigureServices((context, collection) => 
             { 
                 collection.AddHostedService<CDJService>();
-                collection.AddSingleton<ICDJService, EACService>();
-                collection.AddSingleton<ICDJService, SocketService>(); 
-                collection.AddSingleton<ICDJService, OneBotService>();
+                collection.AddSingleton<SocketService>(); 
+                collection.AddSingleton<OneBotService>();
+                
+                collection.AddSingleton<ICDJService>(n => n.GetRequiredService<SocketService>());
+                collection.AddSingleton<ICDJService>(n => n.GetRequiredService<OneBotService>());
+
+                if (config.Get<ServerConfig>()!.EAC)
+                {
+                    collection.AddSingleton<EACService>();
+                    collection.AddSingleton<ICDJService>(n => n.GetRequiredService<EACService>());
+                }
+                
                 collection.AddSingleton<RoomsService>();
                 collection.AddSingleton<EnvironmentalTextService>();
                 collection.AddTransient<HttpClient>();
-                collection.Configure<ServerConfig>(config.GetSection(ServerConfig.Section));
+                collection.Configure<ServerConfig>(config);
             })
             .UseSerilog();
         return hostBuilder;

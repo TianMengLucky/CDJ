@@ -1,14 +1,16 @@
 using System.Text.Json;
 using CDJ.CDJData;
 using CDJ.Config;
-using Microsoft.Extensions.Options;
 
 namespace CDJ.Services;
 
-public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig> config, HttpClient _Client) : ICDJService
+public class OneBotService(ILogger<OneBotService> logger, HttpClient _Client) : ICDJService
 {
-    private readonly ServerConfig _config = config.Value;
+    private ServerConfig _config = null!;
     public readonly List<(long, bool)> _Reads = [];
+    public Task? _Task;
+    public Queue<SendInfo> SendInfos = [];
+    
     public async Task Read()
     {
         if (_config.ReadPath == string.Empty) return;
@@ -23,33 +25,22 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
         }
     }
 
-    public async ValueTask SendMessage(string message)
+    public ValueTask SendMessage(string message)
     {
+        var info = new SendInfo(message);
         if (_config.QQID != 0)
         {
-            if (_config.SendToGroup)
-            {
-                await SendMessageToGroup(message, _config.QQID);
-            }
-            else
-            {
-                await SendMessageToUser(message, _config.QQID);
-            }
+            info.SendTargets.Add((_config.SendToGroup, _config.QQID));
         }
         else
         {
-            foreach (var (id, isQun) in _Reads)
+            foreach (var (id, isGroup) in _Reads)
             {
-                if (isQun)
-                {
-                    await SendMessageToGroup(message, id);
-                }
-                else
-                {
-                    await SendMessageToUser(message, id);
-                }
+                info.SendTargets.Add((isGroup, id));
             }
         }
+        SendInfos.Enqueue(info);
+        return ValueTask.CompletedTask;
     }
 
     public async ValueTask SendMessageToGroup(string message, long id)
@@ -76,6 +67,7 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
 
     public async ValueTask StartAsync(ServerConfig config, CDJService cdjService, CancellationToken cancellationToken)
     {
+        _config = config;
         try
         {
             await Read();
@@ -86,6 +78,39 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
         }
 
         await SendBotInfo();
+
+        var span = TimeSpan.FromSeconds(_config.MessageInterval);
+        _Task = Task.Factory.StartNew(async () =>
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (SendInfos.TryDequeue(out var info))
+                {
+                    foreach (var (isGroup, qqId) in info.SendTargets)
+                    {
+                        try
+                        {
+                            if (isGroup)
+                            {
+                                await SendMessageToGroup(info.Message, qqId);
+                            }
+                            else
+                            {
+                                await SendMessageToUser(info.Message, qqId);
+                            }
+                        }
+                        catch
+                        {
+                            logger.LogWarning($"SendInfo Error IsGroup:{isGroup} QQID:{qqId} Meesage:{info.Message}");
+                            goto End;
+                        }
+                    }
+                }
+                End:
+                
+                Thread.Sleep(span);
+            }
+        },TaskCreationOptions.LongRunning);
     }
     
     public async ValueTask SendBotInfo()
@@ -99,6 +124,7 @@ public class OneBotService(ILogger<OneBotService> logger, IOptions<ServerConfig>
     public ValueTask StopAsync()
     {
         _Client.Dispose();
+        _Task?.Dispose();
         return ValueTask.CompletedTask;
     }
 }

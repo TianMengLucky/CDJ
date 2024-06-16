@@ -5,9 +5,25 @@ using Microsoft.Extensions.Options;
 
 namespace CDJ.Services;
 
-public class RoomsService(EnvironmentalTextService service, IOptions<ServerConfig> config)
+public class RoomsService(EnvironmentalTextService service, IOptions<ServerConfig> config, ILogger<RoomsService> logger)
 {
     public readonly List<Room> _Rooms = [];
+
+    public bool CheckRoom(Room room)
+    {
+        var r = _Rooms.FirstOrDefault(n => n.Code == room.Code);
+        if (r == null)
+            return true;
+
+        var time = DateTime.Now - r.Time;
+        if (time.TotalMinutes < config.Value.RoomInterval)
+        {
+            return false;
+        }
+        
+        
+        return true;
+    }
     
     public bool TryPareRoom(string text,[MaybeNullWhen(false)] out Room room)
     {
@@ -19,31 +35,59 @@ public class RoomsService(EnvironmentalTextService service, IOptions<ServerConfi
                 return false;
         
             var code = strings[0];
-            var BuildVersion = "";
-            Version? version = null;
-            if (Version.TryParse(strings[1], out var v))
-                version = v;
-            else
-                BuildVersion = strings[1];
+            if (code.Length is not 4 and not 6)
+                return false;
 
+            room = _Rooms.FirstOrDefault(n => n.Code == code);
+            
+            if (!Version.TryParse(strings[1], out var version))
+                return false;
+            
             var count = int.Parse(strings[2]);
-            var langId = Enum.Parse<LangName>(strings[3]);
-            var serverName = strings[4];
-            var playName = strings[5];
+            if (count > 15)
+                return false;
 
+            if (!Enum.TryParse<LangName>(strings[3], out var langId))
+                return false;
+            
+            var serverName = strings[4];
+            
+            var playName = strings[5];
+            
+            var BuildVersion = "";
+            if (strings.Length > 6)
+            {
+                BuildVersion = strings[6];
+            }
+
+            var has = true;
+            if (room == null)
+            {
+                room = new Room(code, version, count, langId, serverName, playName, BuildVersion);
+                has = false;
+            }
+            
+            if (!CheckRoom(room))
+            {
+                logger.LogInformation("CheckRoom:False");
+                return false;
+            }
+            
+            room.Time = DateTime.Now;
+            if (!has)
+                _Rooms.Add(room);
+            
             service
                 .Update("RoomCode", code)
-                .Update("Version", version?.ToString() ?? BuildVersion)
+                .Update("Version", version.ToString() ?? BuildVersion)
                 .Update("PlayerCount", count.ToString())
-                .Update("Language", config.Value.LangTextToCN ? lang[langId] : Enum.GetName(langId) ?? "UnKnown Lang")
+                .Update("Language", (config.Value.LangTextToCN ? lang[langId] : Enum.GetName(langId))!)
                 .Update("ServerName", serverName)
                 .Update("PlayerName", playName);
-            
-            room = new Room(code, version, count, langId, serverName, playName, BuildVersion);
-            _Rooms.Add(room);
         }
         catch (Exception e)
         {
+            logger.LogWarning(e.ToString());
             return false;
         }
         

@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using System.Text;
 using CDJ.CDJData;
 using CDJ.Config;
-using Microsoft.Extensions.Options;
 
 namespace CDJ.Services;
 

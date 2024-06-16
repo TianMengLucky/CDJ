@@ -36,5 +36,9 @@
         <None Include="config.json" />
     </ItemGroup>
     
+    <ItemGroup>
+      <Folder Include="Data\" />
+    </ItemGroup>
+    
 
 </Project>

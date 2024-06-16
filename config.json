@@ -2,13 +2,13 @@
   "Ip": "127.0.0.1",
   "Port": 25455,
   "BotHttpUrl": "http://localhost:3500",
-  "LogPath": "log_{time}.txt",
+  "LogPath": "./Data/log_{time}.txt",
   "LangTextToCN": true,
   "SendText": "房间号: {RoomCode}\n版本号: {Version}\n人数: {PlayerCount}\n语言: {Language}\n服务器: {ServerName}\n房主: {PlayerName}",
   "SendToGroup": false,
   "QQID": 250,
   "EACPort": 25545,
   "EACCount": 5,
-  "EACPath": "./EAC.txt",
-  "ReadPath": ""
+  "EACPath": "./Data/EAC.txt",
+  "ReadPath": "",
 }

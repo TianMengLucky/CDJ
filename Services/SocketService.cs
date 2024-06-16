@@ -50,7 +50,7 @@ public class SocketService(
                     if (!com)
                     {
                         logger.LogWarning($"{str} Pare Error");
-                        return;
+                        continue;
                     }
                     await oneBotService.SendMessage(environmentalTextService.Replace(_config.SendText));
                 }
