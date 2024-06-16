@@ -1,7 +1,11 @@
 name: AutoBuild .NET
 
 on: 
-  [push, pull_request]:
+  push:
+    paths:
+      - 'CDJ/**'
+      - 'TestCDJ/**'
+  pull_request:
     paths:
       - 'CDJ/**'
       - 'TestCDJ/**'

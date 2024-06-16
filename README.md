@@ -3,3 +3,4 @@
 有问题加群:837094490  
 车队姬需要搭配支持OneBot协议启用http功能的QQ框架使用  
 推荐搭配无头NTQQ框架使用如[NatCatQQ](https://github.com/NapNeko/NapCatQQ),[LLOneBot](https://github.com/LLOneBot/LLOneBot)   
+车队姬要求安装ASR.Core.Runtime NET8.x版本
