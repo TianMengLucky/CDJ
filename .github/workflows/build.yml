@@ -17,16 +17,16 @@ jobs:
           dotnet-version: 8.x
 
       - name: Build
-        run: dotnet build CDJ.csproj --configuration Release --output ./Release
+        run: dotnet build CDJ/CDJ.csproj --configuration Release --output ./CDJ/Release
         
       - name: Del
-        run: rm -rf ./Release/CDJ.pdb ./Release/CDJ.deps.json ./Release/CDJ.runtimeconfig.json ./Release/global.json
+        run: rm -rf ./CDJ/Release//CDJ.pdb ./CDJ/Release//CDJ.deps.json ./CDJ/Release//CDJ.runtimeconfig.json ./CDJ/Release//global.json
 
       - name: Upload
         uses: actions/upload-artifact@v4.3.1
         with:
           name: CDJ-Linux
-          path: ./Release/
+          path: ./CDJ/Release/
           
   BuildWindows:
     runs-on: windows-latest
@@ -42,28 +42,28 @@ jobs:
           dotnet-version: 8.x
 
       - name: Build
-        run: dotnet build CDJ.csproj --configuration Release --output ./Release
+        run: dotnet build CDJ/CDJ.csproj --configuration Release --output ./CDJ/Release
         
       - name: Del pdb
-        run: del ./Release/CDJ.pdb
+        run: del ./CDJ/Release/CDJ.pdb
       
       - name: Del deps
-        run: del ./Release/CDJ.deps.json
+        run: del ./CDJ/Release/CDJ.deps.json
         
       - name: Del runtimeconfig
-        run: del ./Release/CDJ.runtimeconfig.json
+        run: del ./CDJ/Release/CDJ.runtimeconfig.json
       
       - name: Del global
-        run: del ./Release/global.json
+        run: del ./CDJ/Release/global.json
         
       - name: Upload
         uses: actions/upload-artifact@v4.3.1
         with:
           name: CDJ-Windows
-          path: ./Release/
+          path: ./CDJ/Release/
       
       - name: BuildTestCDJ
-        run: dotnet build TestCDJ/TestCDJ.csproj --configuration Release --output ./TestCDJ/Release
+        run: dotnet build TestCDJ/TestCDJ.csproj --configuration Release --output TestCDJ/Release
         
       - name: Del pdb
         run: del ./TestCDJ/Release/CDJ.pdb
