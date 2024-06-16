@@ -11,4 +11,7 @@
   "EACCount": 5,
   "EACPath": "./Data/EAC.txt",
   "ReadPath": "",
+  "RoomInterval": 30,
+  "HostInterval": 5,
+  "MessageInterval" : 30
 }
