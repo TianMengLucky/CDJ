@@ -6,11 +6,14 @@ namespace CDJ;
 
 public static class Program
 {
+    public static readonly Version version = new(1, 0, 0);
+    
     public static void Main(string[] args)
     {
         var config = CreateConfig();
         SetLog(config);
         
+        Log.Logger.Information($"Start Run CDJ Version{version}");
         try
         {
             Create(args, config).Build().Run();
