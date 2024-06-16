@@ -39,6 +39,16 @@ public class SocketService(
                 try
                 {
                     using var socket = await _TcpListener.AcceptSocketAsync(cancellationToken);
+                    if (socket.RemoteEndPoint is not IPEndPoint endPoint)
+                        return;
+
+                    if (cdjService.BanIps.Contains(endPoint.Address))
+                    {
+                        socket.Dispose();
+                        logger.LogInformation($"Socket Ban Ip{endPoint.Address}");
+                        continue;
+                    }
+                    
                     var bytes = new byte[60];
                     var count = await socket.ReceiveAsync(bytes);
                     var str = Encoding.Default.GetString(bytes).TrimEnd('\0');

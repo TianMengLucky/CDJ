@@ -18,6 +18,8 @@ public class ServerConfig
     public string EACPath { get; set; } = "./EAC.txt";
 
     public string ReadPath = string.Empty;
+    
+    public string BanIpPath = string.Empty;
 
     // 分钟
     public int RoomInterval = 30;

@@ -63,6 +63,16 @@ public class EACService(ILogger<EACService> logger, OneBotService oneBotService)
                 try
                 {
                     using var socket = await _TcpListener.AcceptSocketAsync(cancellationToken);
+                    if (socket.RemoteEndPoint is not IPEndPoint endPoint)
+                        return;
+
+                    if (cdjService.BanIps.Contains(endPoint.Address))
+                    {
+                        socket.Dispose();
+                        logger.LogInformation($"EAC Ban Ip{endPoint.Address}");
+                        continue;
+                    }
+                    
                     _Sockets.Add(socket);
                     var bytes = new byte[60];
                     await socket.ReceiveAsync(bytes);
