@@ -20,7 +20,7 @@ jobs:
         run: dotnet build CDJ/CDJ.csproj --configuration Release --output ./CDJ/Release
         
       - name: Del
-        run: rm -rf ./CDJ/Release//CDJ.pdb ./CDJ/Release//CDJ.deps.json ./CDJ/Release//CDJ.runtimeconfig.json ./CDJ/Release//global.json
+        run: rm -rf ./CDJ/Release/CDJ.pdb ./CDJ/Release/CDJ.deps.json ./CDJ/Release/CDJ.runtimeconfig.json ./CDJ/Release/global.json
 
       - name: Upload
         uses: actions/upload-artifact@v4.3.1
@@ -66,13 +66,13 @@ jobs:
         run: dotnet build TestCDJ/TestCDJ.csproj --configuration Release --output TestCDJ/Release
         
       - name: Del pdb
-        run: del ./TestCDJ/Release/CDJ.pdb
+        run: del ./TestCDJ/Release/TestCDJ.pdb
 
       - name: Del deps
-        run: del ./TestCDJ/Release/CDJ.deps.json
+        run: del ./TestCDJ/Release/TestCDJ.deps.json
 
       - name: Del runtimeconfig
-        run: del ./TestCDJ/Release/CDJ.runtimeconfig.json
+        run: del ./TestCDJ/Release/TestCDJ.runtimeconfig.json
 
       - name: Upload TestCDJ
         uses: actions/upload-artifact@v4.3.1
