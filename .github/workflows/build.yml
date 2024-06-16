@@ -18,6 +18,9 @@ jobs:
 
       - name: Build
         run: dotnet build CDJ.csproj --configuration Release --output ./Release
+        
+      - name: Del
+        run: rm -rf ./Release/CDJ.pdb ./Release/CDJ.deps.json ./Release/CDJ.runtimeconfig.json ./Release/global.json
 
       - name: Upload
         uses: actions/upload-artifact@v4.3.1
@@ -42,7 +45,7 @@ jobs:
         run: dotnet build CDJ.csproj --configuration Release --output ./Release
         
       - name: Del
-        run: rm -rf ./Release/CDJ.pdb ./Release/CDJ.deps.json ./Release/CDJ.runtimeconfig.json ./Release/global.json
+        run: del ./Release/CDJ.pdb ./Release/CDJ.deps.json ./Release/CDJ.runtimeconfig.json ./Release/global.json
 
       - name: Upload
         uses: actions/upload-artifact@v4.3.1
