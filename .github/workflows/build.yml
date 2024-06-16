@@ -1,6 +1,10 @@
 name: AutoBuild .NET
 
-on: [push, pull_request]
+on: 
+  [push, pull_request]:
+    paths:
+      - 'CDJ/**'
+      - 'TestCDJ/**'
 
 jobs:
   BuildLiunx:
